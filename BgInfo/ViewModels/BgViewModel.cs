@@ -1,96 +1,115 @@
-﻿using Prism.Mvvm;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static BgInfo.NativeMethods;
-using System.Windows;
-using System.Runtime.InteropServices;
 using System.IO;
+using System.Linq;
 using System.Management;
-using BgInfo.Models;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
+using System.Text;
+using BgInfo.Models;
+using Prism.Mvvm;
+using static BgInfo.NativeMethods;
 
-namespace BgInfo.ViewModels {
-	class BgViewModel : BindableBase {
-		MonitorInfo _monitor;
-		PerformanceInformation _perf;
-		public Settings Settings { get; }
+namespace BgInfo.ViewModels
+{
+  class BgViewModel : BindableBase
+  {
+    MonitorInfo _monitor;
+    PerformanceInformation _perf;
 
-		public BgViewModel(MonitorInfo monitor, Settings settings) {
-			_monitor = monitor;
-			Settings = settings;
+    public Settings Settings { get; }
 
-			Refresh(false);
-		}
+    public BgViewModel(MonitorInfo monitor, Settings settings)
+    {
+      _monitor = monitor;
+      Settings = settings;
 
-		public IEnumerable<DriveInfoViewModel> Drives => DriveInfo.GetDrives().Select(drive => new DriveInfoViewModel(drive));
-		public DateTime BootTime => DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount);
-		public string OSVersion => Environment.OSVersion.ToString();
-		public string ComputerName => Environment.MachineName;
+      Refresh(false);
+    }
 
-		public string DomainName => Environment.UserDomainName;
-		public string Resolution => $"{_monitor.rcMonitor.Width} X {_monitor.rcMonitor.Height}";
+    public IEnumerable<DriveInfoViewModel> Drives => DriveInfo.GetDrives().Select(drive => new DriveInfoViewModel(drive));
+    public DateTime BootTime => DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount);
+    public string OSVersion => Environment.OSVersion.ToString();
+    public string ComputerName => Environment.MachineName;
 
-		public string Memory => $"{_perf.PhysicalTotal.ToInt64() >> 8} MB";
-		public string AvailableMemory => $"{_perf.PhysicalAvailable.ToInt64() >> 8} MB";
-		public uint Processes => _perf.ProcessCount;
-		public uint Threads => _perf.ThreadCount;
-		public uint Handles => _perf.HandleCount;
+    public string DomainName => Environment.UserDomainName;
+    public string Resolution => $"{_monitor.rcMonitor.Width} X {_monitor.rcMonitor.Height}";
 
-		public string Commit => $"{_perf.CommitTotal.ToInt64() >> 8} MB / {_perf.CommitLimit.ToInt64() >> 8} MB";
+    public string Memory => $"{_perf.PhysicalTotal.ToInt64() >> 8} MB";
+    public string AvailableMemory => $"{_perf.PhysicalAvailable.ToInt64() >> 8} MB";
+    public uint Processes => _perf.ProcessCount;
+    public uint Threads => _perf.ThreadCount;
+    public uint Handles => _perf.HandleCount;
 
-		public int ProcessorCount => Environment.ProcessorCount;
+    public string Commit => $"{_perf.CommitTotal.ToInt64() >> 8} MB / {_perf.CommitLimit.ToInt64() >> 8} MB";
 
-		static string _processorName;
-		public string Processor => _processorName ?? (_processorName = GetProcessorName());
+    public int ProcessorCount => Environment.ProcessorCount;
 
-		private string GetProcessorName() {
-			var mgt = new ManagementClass("Win32_Processor");
-			var processors = mgt.GetInstances();
-			if(processors.Count == 0)
-				return "Unknown";
-			return processors.Cast<ManagementObject>().First().Properties["Name"].Value.ToString();
-		}
+    static string _processorName;
+    public string Processor => _processorName ?? (_processorName = GetProcessorName());
 
-		public DateTime UpdateTime => DateTime.Now;
+    private string GetProcessorName()
+    {
+      var mgt = new ManagementClass("Win32_Processor");
+      var processors = mgt.GetInstances();
+      if (processors.Count == 0)
+      {
+        return "Unknown";
+      }
 
-		public void Refresh(bool raiseChanges = true) {
-			_perf.cb = Marshal.SizeOf<PerformanceInformation>();
-			var ok = GetPerformanceInfo(ref _perf, Marshal.SizeOf<PerformanceInformation>());
-			if(raiseChanges) {
-				RaisePropertyChanged(nameof(Resolution));
-				RaisePropertyChanged(nameof(Processes));
-				RaisePropertyChanged(nameof(AvailableMemory));
-				RaisePropertyChanged(nameof(Threads));
-				RaisePropertyChanged(nameof(Handles));
-				RaisePropertyChanged(nameof(Drives));
-				RaisePropertyChanged(nameof(UpdateTime));
-				RaisePropertyChanged(nameof(Commit));
-			}
-		}
+      return processors.Cast<ManagementObject>().First().Properties["Name"].Value.ToString();
+    }
 
-		public IEnumerable<string> Network {
-			get {
-				var macs = new List<string>(4);
-				foreach(var nic in NetworkInterface.GetAllNetworkInterfaces()) {
-					var address = nic.GetPhysicalAddress().ToString();
-					if(!string.IsNullOrEmpty(address) && address.Length == 12)
-						macs.Add($"{nic.Description}\n\t {ToMacAddress(address)} {nic.Speed / 1000000} Mb/s");
-				}
-				return macs.Distinct();
-			}
-		}
+    public DateTime UpdateTime => DateTime.Now;
 
-		private string ToMacAddress(string address) {
-			var mac = new StringBuilder(32);
-			for(int i = 0; i < address.Length; i += 2) {
-				mac.Append(address.Substring(i, 2));
-				if(i < address.Length - 2)
-					mac.Append("-");
-			}
-			return mac.ToString();
-		}
-	}
+    public void Refresh(bool raiseChanges = true)
+    {
+      _perf.cb = Marshal.SizeOf<PerformanceInformation>();
+      var ok = GetPerformanceInfo(ref _perf, Marshal.SizeOf<PerformanceInformation>());
+      if (raiseChanges)
+      {
+        RaisePropertyChanged(nameof(Resolution));
+        RaisePropertyChanged(nameof(Processes));
+        RaisePropertyChanged(nameof(AvailableMemory));
+        RaisePropertyChanged(nameof(Threads));
+        RaisePropertyChanged(nameof(Handles));
+        RaisePropertyChanged(nameof(Drives));
+        RaisePropertyChanged(nameof(UpdateTime));
+        RaisePropertyChanged(nameof(Commit));
+      }
+    }
+
+    public IEnumerable<string> Network
+    {
+      get
+      {
+        var macs = new List<string>(4);
+        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+        {
+          var address = nic.GetPhysicalAddress().ToString();
+          if (!string.IsNullOrEmpty(address) && address.Length == 12)
+          {
+            macs.Add($"{nic.Description}\n\t {ToMacAddress(address)} {nic.Speed / 1000000} Mb/s");
+          }
+        }
+
+        return macs.Distinct();
+      }
+    }
+
+    private string ToMacAddress(string address)
+    {
+      var mac = new StringBuilder(32);
+      for (int i = 0; i < address.Length; i += 2)
+      {
+        mac.Append(address.Substring(i, 2));
+        if (i < address.Length - 2)
+        {
+          mac.Append("-");
+        }
+      }
+
+      return mac.ToString();
+    }
+  }
 }
